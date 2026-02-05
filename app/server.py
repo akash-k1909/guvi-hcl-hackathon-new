@@ -131,7 +131,7 @@ async def chat(
     logger.debug("Scam score session=%s score=%s", session_id, session["scam_score"])
 
     start = time.perf_counter()
-    agent_plan = build_reply(
+    agent_plan = await build_reply(
         effective_history,
         current_text,
         session["identity"],

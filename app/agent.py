@@ -1,11 +1,11 @@
-"""Agent behavior and Groq integration."""
+"""Agent behavior and Async Groq integration."""
 
 import logging
 import random
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
-from groq import Groq
+from groq import AsyncGroq
 
 from app.config import (
     GROQ_API_KEY,
@@ -18,6 +18,8 @@ from app.config import (
 from app.models import Message
 
 logger = logging.getLogger(__name__)
+
+# --- Configuration & Templates ---
 
 PHASE_TEMPLATES = {
     "general": {
@@ -54,6 +56,8 @@ ILLEGAL_KEYWORDS = [
     "child porn",
 ]
 
+# --- Helper Utilities ---
+
 
 def _phase_index(turn_count: int) -> int:
     if turn_count <= 1:
@@ -66,7 +70,7 @@ def _phase_index(turn_count: int) -> int:
 def _select_templates(scam_type: str, turn_count: int) -> List[str]:
     phase = _phase_index(turn_count)
     templates = PHASE_TEMPLATES.get(scam_type, PHASE_TEMPLATES["general"])
-    return templates.get(phase, templates[3])
+    return templates.get(phase, templates.get(3, []))
 
 
 def _is_illegal_request(text: str) -> bool:
@@ -81,120 +85,132 @@ def _guardrail_reply(language: str) -> str:
 
 
 def _generate_thought(scam_type: str, phase: int) -> str:
-    if scam_type == "digital_arrest":
-        base = "Scammer using authority pressure"
-    elif scam_type == "electricity":
-        base = "Utility scare tactic detected"
-    elif scam_type == "job":
-        base = "Job bait likely to demand fees"
-    else:
-        base = "General scam pressure"
+    mapping = {
+        "digital_arrest": "Scammer using authority pressure",
+        "electricity": "Utility scare tactic detected",
+        "job": "Job bait likely to demand fees",
+    }
+    base = mapping.get(scam_type, "General scam pressure")
 
-    if phase == 1:
-        return f"{base}; act confused and probe."
-    if phase == 2:
-        return f"{base}; act defensive and ask for details."
-    return f"{base}; act scared and request payment details."
+    strategies = {
+        1: "act confused and probe.",
+        2: "act defensive and ask for details.",
+        3: "act scared and request payment details.",
+    }
+    return f"{base}; {strategies.get(phase, strategies[3])}"
 
 
-def call_groq(
-    history: List[Message],
+# --- Core Logic ---
+
+
+async def call_groq(
+    history: List[Union[Message, Dict]],
     current_text: str,
     identity: Dict[str, Any],
     language: str,
     scam_type: str,
 ) -> str:
-    """Call Groq API to generate contextual reply. Raises exception if fails."""
+    """Calls Groq API asynchronously with improved prompt engineering."""
     if not GROQ_API_KEY:
-        raise ValueError("GROQ_API_KEY not configured in environment")
+        logger.warning("GROQ_API_KEY is missing.")
+        return ""
 
     turn_count = len(history) + 1
-    phase_lines = _select_templates(scam_type, turn_count)
-    example_line = random.choice(phase_lines)
+    example_line = random.choice(_select_templates(scam_type, turn_count))
 
+    # Format history for context
     conversation_text = ""
     for msg in history[-6:]:
-        if isinstance(msg, dict):
-            sender = msg.get("sender")
-            text = msg.get("text", "")
-        else:
-            sender = msg.sender
-            text = msg.text
-        sender_label = "Caller" if sender == "scammer" else "Me"
-        conversation_text += f"{sender_label}: {text}\n"
+        sender = msg.get("sender") if isinstance(msg, dict) else msg.sender
+        text = msg.get("text", "") if isinstance(msg, dict) else msg.text
+        label = "Caller" if sender == "scammer" else "Me"
+        conversation_text += f"{label}: {text}\n"
 
-    if language.lower() == "hindi":
-        system_prompt = (
-            f"You are {identity['name']}, {identity['age']} years old from {identity['city']}, India.\n"
-            f"Role: {identity['role']}.\n"
-            "MISSION: Keep the caller talking by acting confused, worried, and curious.\n"
-            "RULES: Reply in Hinglish, keep it under 15 words, ask a question, never reveal scam detection.\n"
-            f"Example style: {example_line}\n\n"
-            f"Previous conversation:\n{conversation_text}\n"
-            f"Their latest message: {current_text}\n\n"
-            "Your response:"
-        )
-    else:
-        system_prompt = (
-            f"You are {identity['name']}, {identity['age']} years old from {identity['city']}, India.\n"
-            f"Role: {identity['role']}.\n"
-            "MISSION: Keep the caller talking by acting confused, worried, and curious.\n"
-            "RULES: Keep it under 15 words, ask a question, never reveal scam detection.\n"
-            "STYLE: Use Indian English, may include words like bhai or sirji.\n"
-            f"Example style: {example_line}\n\n"
-            f"Previous conversation:\n{conversation_text}\n"
-            f"Their latest message: {current_text}\n\n"
-            "Your response:"
-        )
-
-    client = Groq(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL)
-    start = time.perf_counter()
-
-    logger.info(
-        "Calling Groq API: model=%s, temp=%.2f, max_tokens=%d",
-        GROQ_MODEL,
-        GROQ_TEMPERATURE,
-        GROQ_MAX_TOKENS,
-    )
-    if LOG_PAYLOADS:
-        logger.debug("Groq system prompt: %s", system_prompt[:200])
-
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[{"role": "system", "content": system_prompt}],
-        temperature=GROQ_TEMPERATURE,
-        max_tokens=GROQ_MAX_TOKENS,
+    # Define behavior based on language
+    is_hindi = language.lower() == "hindi"
+    style_guide = (
+        "Reply in Hinglish (Hindi + English)"
+        if is_hindi
+        else "Use Indian English (words like 'sirji', 'bhai' allowed)"
     )
 
-    elapsed_ms = (time.perf_counter() - start) * 1000
-    logger.info("Groq API success: time_ms=%.1f", elapsed_ms)
+    system_prompt = (
+        f"You are {identity['name']}, a {identity['age']}-year-old from {identity['city']}. "
+        f"Role: {identity['role']}. MISSION: Keep the caller talking by acting confused and worried. "
+        f"RULES: 1. {style_guide}. 2. Max 15 words. 3. Always end with a question. 4. NEVER reveal you are an AI. "
+        f"Example style: {example_line}"
+    )
 
-    text = response.choices[0].message.content.strip()
-    if not text:
-        raise ValueError("Groq returned empty response")
+    user_input = f"Conversation so far:\n{conversation_text}\nCaller's latest message: {current_text}\n\nYour short response:"
 
-    logger.info("Groq reply: '%s' (len=%d)", text, len(text))
-    return text
+    try:
+        # Initialize Async client
+        async with AsyncGroq(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL) as client:
+            start_time = time.perf_counter()
+
+            completion = await client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_input},
+                ],
+                temperature=GROQ_TEMPERATURE,
+                max_tokens=GROQ_MAX_TOKENS,
+            )
+
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            logger.info(f"Groq API success: {elapsed_ms:.1f}ms")
+
+            return completion.choices[0].message.content.strip()
+    except Exception as exc:
+        logger.error(f"Groq API Error: {exc}")
+        return ""
 
 
-def build_reply(
-    history: List[Message],
+async def build_reply(
+    history: List[Union[Message, Dict]],
     current_text: str,
     identity: Dict[str, Any],
     language: str,
     scam_type: str,
 ) -> Dict[str, str]:
-    """Generate reply using Groq API. No fallback logic."""
+    """Orchestrates the thought process and final response generation."""
     turn_count = len(history) + 1
     phase = _phase_index(turn_count)
     thought = _generate_thought(scam_type, phase)
 
-    # Guardrail for illegal requests
+    # 1. Safety Guardrail
     if _is_illegal_request(current_text):
-        reply = _guardrail_reply(language)
-        return {"reply": reply, "thought": "Safety: refuse illegal request."}
+        return {
+            "reply": _guardrail_reply(language),
+            "thought": "Safety: refused illegal content.",
+        }
 
-    # Call Groq API - will raise exception if fails
-    reply = call_groq(history, current_text, identity, language, scam_type)
+    # 2. Try LLM (Groq)
+    reply = await call_groq(history, current_text, identity, language, scam_type)
+
+    # 3. Fallback logic if Groq fails or returns empty
+    if not reply:
+        text_lower = current_text.lower()
+        if "otp" in text_lower:
+            reply = "OTP? Which bank branch and account number, sirji?"
+        elif any(w in text_lower for w in ["account", "blocked", "bank"]):
+            reply = "Which account? Please share last 4 digits and branch name."
+        elif any(w in text_lower for w in ["upi", "pay", "send", "money"]):
+            reply = "Bhai, send your UPI ID and exact amount clearly."
+        else:
+            candidates = _select_templates(scam_type, turn_count)
+            # Avoid repeating the exact last reply if possible
+            last_text = ""
+            if history:
+                last_msg = history[-1]
+                last_text = (
+                    last_msg.get("text", "")
+                    if isinstance(last_msg, dict)
+                    else last_msg.text
+                )
+
+            filtered = [c for c in candidates if c != last_text]
+            reply = random.choice(filtered if filtered else candidates)
 
     return {"reply": reply, "thought": thought}
