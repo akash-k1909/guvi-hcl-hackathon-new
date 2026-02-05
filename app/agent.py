@@ -5,7 +5,7 @@ import random
 import time
 from typing import Any, Dict, List
 
-import requests
+from groq import Groq
 
 from app.config import (
     GROQ_API_KEY,
@@ -107,6 +107,8 @@ def call_groq(
     if not GROQ_API_KEY:
         return "Sorry, can you explain again?"
 
+    client = Groq(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL)
+
     turn_count = len(history) + 1
     phase_lines = _select_templates(scam_type, turn_count)
     example_line = random.choice(phase_lines)
@@ -146,43 +148,22 @@ def call_groq(
             "Your response:"
         )
 
-    payload = {
-        "model": GROQ_MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-        ],
-        "temperature": GROQ_TEMPERATURE,
-        "max_tokens": GROQ_MAX_TOKENS,
-    }
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
     start = time.perf_counter()
     try:
         if LOG_PAYLOADS:
             logger.debug("Groq request model=%s tokens=%s", GROQ_MODEL, GROQ_MAX_TOKENS)
 
-        response = requests.post(
-            f"{GROQ_BASE_URL}/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=10,
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "system", "content": system_prompt}],
+            temperature=GROQ_TEMPERATURE,
+            max_tokens=GROQ_MAX_TOKENS,
         )
+
         elapsed_ms = (time.perf_counter() - start) * 1000
-        logger.debug(
-            "Groq response status=%s time_ms=%.1f", response.status_code, elapsed_ms
-        )
+        logger.debug("Groq response time_ms=%.1f", elapsed_ms)
 
-        if response.status_code != 200:
-            if LOG_PAYLOADS:
-                logger.debug("Groq error body=%s", response.text[:500])
-            return "Sorry, the line is unclear. Can you repeat?"
-
-        result = response.json()
-        text = result["choices"][0]["message"]["content"].strip()
+        text = response.choices[0].message.content.strip()
         if LOG_PAYLOADS:
             logger.debug("Groq reply len=%s", len(text))
         return text or "Please explain again."
