@@ -3,6 +3,7 @@
 import os
 
 API_KEY = os.getenv("HONEY_API_KEY", "guvi2026")
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "1") == "1"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_URL = os.getenv(
     "GEMINI_API_URL",

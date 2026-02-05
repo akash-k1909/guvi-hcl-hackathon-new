@@ -11,6 +11,7 @@ from app.agent import build_reply
 from app.callback import send_guvi_callback
 from app.config import (
     API_KEY,
+    AUTH_ENABLED,
     ENABLE_NGROK,
     GEMINI_API_KEY,
     MAX_TURNS_BEFORE_CALLBACK,
@@ -58,7 +59,7 @@ async def chat(
     background_tasks: BackgroundTasks,
     x_api_key: Optional[str] = Header(None),
 ) -> Dict[str, Any]:
-    if x_api_key != API_KEY:
+    if AUTH_ENABLED and x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API Key")
 
     session_id = data.session_id
