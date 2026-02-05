@@ -189,28 +189,11 @@ async def build_reply(
     # 2. Try LLM (Groq)
     reply = await call_groq(history, current_text, identity, language, scam_type)
 
-    # 3. Fallback logic if Groq fails or returns empty
+    # 3. Fallback logic: If Groq fails, return a generic error or minimal safety response.
+    # We removed the heuristic rules to ensure Groq is the primary driver.
     if not reply:
-        text_lower = current_text.lower()
-        if "otp" in text_lower:
-            reply = "OTP? Which bank branch and account number, sirji?"
-        elif any(w in text_lower for w in ["account", "blocked", "bank"]):
-            reply = "Which account? Please share last 4 digits and branch name."
-        elif any(w in text_lower for w in ["upi", "pay", "send", "money"]):
-            reply = "Bhai, send your UPI ID and exact amount clearly."
-        else:
-            candidates = _select_templates(scam_type, turn_count)
-            # Avoid repeating the exact last reply if possible
-            last_text = ""
-            if history:
-                last_msg = history[-1]
-                last_text = (
-                    last_msg.get("text", "")
-                    if isinstance(last_msg, dict)
-                    else last_msg.text
-                )
-
-            filtered = [c for c in candidates if c != last_text]
-            reply = random.choice(filtered if filtered else candidates)
+        logger.error("Groq returned empty response (potential API error).")
+        reply = "Hello? Sir, I cannot hear you clearly. Can you repeat?"
+        thought = "System: Groq API failed; generic fallback used."
 
     return {"reply": reply, "thought": thought}
