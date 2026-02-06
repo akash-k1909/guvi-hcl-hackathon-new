@@ -30,12 +30,17 @@ The Agentic Honey-Pot is a multi-agent AI system designed to engage with scammer
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Set Gemini API Key (CRITICAL)
+# 2. Set environment variables
 # Windows (PowerShell)
 $env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+$env:HONEY_API_KEY="YOUR_SECRET_API_KEY"
 
 # Linux/Mac
 export GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+export HONEY_API_KEY="YOUR_SECRET_API_KEY"
+
+# Optional: enable ngrok tunnel for local testing
+# $env:ENABLE_NGROK="1"
 
 # 3. Run the server
 python main.py
@@ -48,7 +53,7 @@ python main.py
 🌐 PUBLIC URL: https://xxxx-xx-xx-xx-xx.ngrok-free.app
 🔒 Local URL: http://localhost:8000
 📡 GUVI Callback: https://hackathon.guvi.in/api/updateHoneyPotFinalResult
-🔑 API Key: guvi2026
+🔑 API Key: from HONEY_API_KEY (default: guvi2026 if not set)
 ============================================================
 📊 Ready to handle 1.4 Billion scale challenge
 ============================================================
@@ -68,7 +73,7 @@ Response: {"status": "🛡️ CYBERGUARD ACTIVE", "activeSessions": 0}
 ```bash
 POST /chat
 Headers:
-  x-api-key: guvi2026
+  x-api-key: YOUR_SECRET_API_KEY
   Content-Type: application/json
 
 Body (Judge-Compatible Schema):
@@ -89,20 +94,21 @@ Body (Judge-Compatible Schema):
 
 Response:
 {
-  "response": "Wrong number? I don't have account.",
-  "sessionId": "SESSION_123",
-  "agentIdentity": {
-    "name": "Ramesh",
-    "city": "Mumbai"
-  },
-  "intelligenceExtracted": {
+  "status": "success",
+  "reply": "Wrong number? I don't have account.",
+  "scamDetected": true,
+  "totalMessagesExchanged": 2,
+  "extractedIntelligence": {
     "bankAccounts": [],
     "upiIds": ["victim@paytm"],
     "phishingLinks": [],
     "phoneNumbers": [],
     "suspiciousKeywords": ["block", "verify"]
   },
-  "totalMessagesExchanged": 1
+  "agentIdentity": {
+    "name": "Ramesh",
+    "city": "Mumbai"
+  }
 }
 ```
 
@@ -137,8 +143,8 @@ Response:
 ## 📡 GUVI CALLBACK SYSTEM
 
 ### Trigger Conditions
-- **Condition 1**: Any financial intelligence extracted (UPI/Bank/Phone)
-- **Condition 2**: More than 3 messages exchanged
+- **Condition 1**: Scam intent confirmed
+- **Condition 2**: Engagement complete (turn threshold and/or actionable intel)
 
 ### Callback Payload
 ```json

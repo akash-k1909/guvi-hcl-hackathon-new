@@ -8,8 +8,22 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic==2.5.3
 
-# HTTP Client for Gemini AI & GUVI Callback
+# HTTP Client for GUVI Callback
 requests==2.31.0
+
+# Async Groq SDK (with async support)
+groq==0.11.0
+anyio==4.12.1
+
+# SSL Certificate Verification
+certifi==2026.1.4
+
+# Env loading
+python-dotenv==1.0.1
+
+# Testing
+pytest==8.2.0
+httpx==0.27.0
 
 # Public URL Tunneling (ngrok)
 pyngrok==7.0.5
