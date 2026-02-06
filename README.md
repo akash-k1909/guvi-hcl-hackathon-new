@@ -1,273 +1,344 @@
-# 🛡️ AGENTIC HONEY-POT SYSTEM
-**National Public Safety Initiative - MeitY Hackathon**  
-Production-Grade Scam Detection & Intelligence Extraction Platform
+# 🛡️ Agentic Honey-Pot API
 
----
+Production-grade scam detection and intelligence extraction system for the **India AI Impact Buildathon**.
 
-## 🎯 SYSTEM OVERVIEW
+## 🎯 Overview
 
-The Agentic Honey-Pot is a multi-agent AI system designed to engage with scammers, extract actionable intelligence, and automatically alert law enforcement. Built to handle **1.4 Billion scale** challenges with production-grade resilience.
+A multi-agent system that detects scam intent, maintains persona-driven conversations in Hinglish, and silently extracts intelligence for law enforcement. Built with LangGraph for state orchestration and powered by Claude 3.5 Sonnet for human-like responses.
 
-### Core Features
-- ✅ **Dynamic Identity Engine**: Random Indian personas (names, cities, ages)
-- ✅ **Language Intelligence**: Auto-detects Hindi and responds in Hinglish
-- ✅ **Intelligence Extraction**: Regex-based extraction of UPI IDs, bank accounts, phone numbers, phishing URLs
-- ✅ **Law Enforcement Callback**: Automatic POST to GUVI platform when threats detected
-- ✅ **Resilience Layer**: Fallback mechanisms for AI failures (1.4B scale readiness)
-- ✅ **Public URL**: Auto-generates ngrok tunnel for judge testing
+## 🏗️ Architecture
 
----
+```mermaid
+graph TD
+    A[Mock Scammer API] -->|POST /api/honeypot| B[FastAPI Layer]
+    B --> C{API Key Valid?}
+    C -->|No| D[401 Unauthorized]
+    C -->|Yes| E[LangGraph State Machine]
+    
+    E --> F[START: Load/Initialize Session]
+    F --> G[DETECT: Profiler Agent]
+    
+    G --> H{Scam Probability?}
+    H -->|< 70%| I[Generic Response]
+    H -->|≥ 70%| J[ENGAGE: Actor Agent]
+    
+    J --> K[EXTRACT: Auditor Agent]
+    K --> L[Save to Redis]
+    
+    L --> M{Max Turns?}
+    M -->|No| N[Return Response]
+    M -->|Yes| O[CALLBACK: GUVI Endpoint]
+    
+    O --> P[Self-Healing Retry]
+    P -->|Success| N
+    P -->|Failure| Q[Local Fallback Storage]
+    
+    style G fill:#ff9999
+    style J fill:#99ccff
+    style K fill:#99ff99
+    style O fill:#ffcc99
+```
 
-## 🚀 QUICK START
+## 📁 Project Structure
+
+```
+astral-constellation/
+├── config.py              # Centralized configuration
+├── main.py                # FastAPI application
+├── graph.py               # LangGraph state machine
+├── models/
+│   ├── schemas.py        # API request/response models
+│   └── state.py          # LangGraph state definition
+├── agents/
+│   ├── profiler.py       # 🔍 Agent 1: Zero-trust validation
+│   ├── actor.py          # 🎭 Agent 2: Persona responses
+│   └── auditor.py        # 🕵️ Agent 3: Silent extraction
+├── utils/
+│   ├── logger.py         # National Security grade logging
+│   ├── redis_client.py   # Session state manager
+│   ├── forensics.py      # Domain age & TRAI validation
+│   └── extraction.py     # Intelligence extraction patterns
+├── services/
+│   └── callback.py       # GUVI callback with retry
+└── tests/
+    ├── mock_scammer.py   # Scam message simulator
+    └── test_workflow.py  # End-to-end tests
+```
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.10+** (Recommended: Python 3.11)
-- **Gemini API Key** (Get from [Google AI Studio](https://makersuite.google.com/app/apikey))
+
+- Python 3.11+
+- Redis (via Docker or local installation)
+- API Keys:
+  - Google AI (Gemini)
+  - Anthropic (Claude 3.5 Sonnet)
+  - GUVI Hackathon callback endpoint
 
 ### Installation
 
 ```bash
-# 1. Install dependencies
+# 1. Clone or navigate to project
+cd astral-constellation
+
+# 2. Create virtual environment
+python -m venv venv
+.\venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 2. Set environment variables
-# Windows (PowerShell)
-$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
-$env:HONEY_API_KEY="YOUR_SECRET_API_KEY"
+# 4. Set up environment variables
+copy .env.example .env
+# Edit .env with your API keys
 
-# Linux/Mac
-export GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
-export HONEY_API_KEY="YOUR_SECRET_API_KEY"
+# 5. Start Redis
+docker-compose up -d
 
-# Optional: enable ngrok tunnel for local testing
-# $env:ENABLE_NGROK="1"
-
-# 3. Run the server
+# 6. Run the API
 python main.py
 ```
 
-### Expected Output
+The API will be available at `http://localhost:8000`
+
+## 🔑 Environment Configuration
+
+Edit `.env` with your credentials:
+
+```env
+# Required API Keys
+GOOGLE_API_KEY=your_google_ai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# GUVI Hackathon
+GUVI_CALLBACK_URL=https://your-callback-endpoint.com/updateHoneyPotFinalResult
+GUVI_API_KEY=your_guvi_api_key_here
+
+# API Security
+API_KEY=your_secret_api_key_change_this
+
+# Redis Configuration (defaults work with docker-compose)
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
-🛡️ AGENTIC HONEY-POT SYSTEM - ACTIVE
-============================================================
-🌐 PUBLIC URL: https://xxxx-xx-xx-xx-xx.ngrok-free.app
-🔒 Local URL: http://localhost:8000
-📡 GUVI Callback: https://hackathon.guvi.in/api/updateHoneyPotFinalResult
-🔑 API Key: from HONEY_API_KEY (default: guvi2026 if not set)
-============================================================
-📊 Ready to handle 1.4 Billion scale challenge
-============================================================
-```
 
----
+## 📡 API Endpoints
 
-## 📡 API ENDPOINTS
+### Main Honey-Pot Endpoint
 
-### 1. Health Check
-```bash
-GET /
-Response: {"status": "🛡️ CYBERGUARD ACTIVE", "activeSessions": 0}
-```
-
-### 2. Chat Endpoint (Main Interface)
-```bash
-POST /chat
+```http
+POST /api/honeypot
 Headers:
-  x-api-key: YOUR_SECRET_API_KEY
+  X-API-Key: your_api_key
   Content-Type: application/json
 
-Body (Judge-Compatible Schema):
+Body:
 {
-  "sessionId": "SESSION_123",
-  "message": {
-    "sender": "scammer",
-    "text": "Your account will be blocked. Send UPI to verify: victim@paytm",
-    "timestamp": 1738776632
-  },
-  "conversationHistory": [],
-  "metadata": {
-    "channel": "SMS",
-    "language": "English",
-    "locale": "IN"
-  }
+  "session_id": "unique-session-id",
+  "sender_id": "9876543210",
+  "message": "Your account is blocked. Click here to verify.",
+  "timestamp": "2026-02-06T10:00:00Z"
 }
 
 Response:
 {
-  "status": "success",
-  "reply": "Wrong number? I don't have account.",
-  "scamDetected": true,
-  "totalMessagesExchanged": 2,
-  "extractedIntelligence": {
-    "bankAccounts": [],
-    "upiIds": ["victim@paytm"],
-    "phishingLinks": [],
-    "phoneNumbers": [],
-    "suspiciousKeywords": ["block", "verify"]
-  },
-  "agentIdentity": {
-    "name": "Ramesh",
-    "city": "Mumbai"
-  }
+  "session_id": "unique-session-id",
+  "response": "Arre beta, ye kya ho gaya? Mera account blocked?",
+  "engagement_duration": 1.234,
+  "turn_number": 1,
+  "is_complete": false
 }
 ```
 
----
+### Health Check
 
-## 🧠 INTELLIGENCE EXTRACTION
+```http
+GET /health
 
-### Patterns Detected
-| Type | Regex Pattern | Example |
-|------|--------------|---------|
-| **UPI IDs** | `[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}` | `ramesh@paytm`, `fraud123@ybl` |
-| **Bank Accounts** | `\b\d{9,18}\b` | `123456789012` |
-| **Phone Numbers** | `(\+91[\-\s]?)?[6789]\d{9}` | `+91-9876543210`, `9876543210` |
-| **Phishing URLs** | `https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+` | `https://fake-bank.com` |
-| **Keywords** | 21 suspicious terms | `kyc`, `suspend`, `warrant`, `otp`, `cvv` |
-
----
-
-## 🎭 AGENT BEHAVIOR
-
-### Engagement Strategy (3-Phase)
-1. **Phase 1: Confusion** → "Wrong number?"
-2. **Phase 2: Fear** → "Please don't block my account!"
-3. **Phase 3: Intelligence Gathering** → "Where do I send money?"
-
-### Language Adaptation
-- **English Input** → English responses ("Hello sir")
-- **Hindi Input** → Hinglish responses ("Haan sir, bolo")
-
----
-
-## 📡 GUVI CALLBACK SYSTEM
-
-### Trigger Conditions
-- **Condition 1**: Scam intent confirmed
-- **Condition 2**: Engagement complete (turn threshold and/or actionable intel)
-
-### Callback Payload
-```json
+Response:
 {
-  "sessionId": "SESSION_123",
-  "scamDetected": true,
-  "totalMessagesExchanged": 4,
-  "extractedIntelligence": {
-    "bankAccounts": ["123456789012"],
-    "upiIds": ["scammer@paytm"],
-    "phishingLinks": ["https://fake-kyc.com"],
-    "phoneNumbers": ["+919876543210"],
-    "suspiciousKeywords": ["kyc", "urgent", "block"]
-  },
-  "agentNotes": "CRITICAL THREAT: Detected UPI Fraud scam. Engaged as Ramesh from Mumbai. Financial evidence secured for Cyber Crime Cell."
+  "status": "healthy",
+  "timestamp": "2026-02-06T10:00:00Z",
+  "redis_connected": true,
+  "version": "1.0.0"
 }
 ```
 
----
+### Session Management (Debug)
 
-## 🏗️ PRODUCTION ARCHITECTURE
+```http
+GET /api/session/{session_id}
+Headers:
+  X-API-Key: your_api_key
 
-### Resilience Features (1.4B Scale)
-- ✅ **Fallback AI Responses**: "Hello? Network is slow. Can you message again?"
-- ✅ **Timeout Handling**: 10-second Gemini API timeout
-- ✅ **Background Tasks**: Non-blocking GUVI callbacks
-- ✅ **Session Persistence**: In-memory store (upgrade to Redis/PostgreSQL for cloud)
-
-### Recommended Cloud Deployment
-```bash
-# Option 1: Railway/Render (Auto-scaling)
-# Option 2: AWS Lambda + API Gateway (Serverless)
-# Option 3: Google Cloud Run (Containerized)
-
-# Environment Variables Required:
-# - GEMINI_API_KEY
-# - Optional: REDIS_URL (for distributed sessions)
+DELETE /api/session/{session_id}
+Headers:
+  X-API-Key: your_api_key
 ```
 
----
+## 🎭 Agent Details
 
-## 🧪 TESTING
+### 🔍 Agent 1: The Profiler
 
-### Test with cURL
+Zero-trust scam detection:
+- TRAI header validation
+- Domain age verification via WHOIS
+- URL safety analysis
+- Scam probability scoring (0.0-1.0)
+
+**Engagement threshold**: Only responds if scam probability ≥ 0.7
+
+### 🎭 Agent 2: The Actor
+
+Hinglish persona engine powered by Claude 3.5 Sonnet:
+
+**Confused Senior Persona**:
+- Elderly person unclear about technology
+- Emotional progression: Confused → Scared → Curious → Extracting
+- Example: *"Arre beta, ye OTP kya hota hai? Mujhe dar lag raha hai..."*
+
+**Eager Student Persona**:
+- Young person excited about opportunities
+- Shows interest but asks verification questions
+- Example: *"Wow free iPhone? Theek hai bhai, but pehle tumhara number do na?"*
+
+### 🕵️ Agent 3: The Auditor
+
+Silent intelligence extraction:
+- **UPI IDs**: `scammer@paytm`
+- **Bank Accounts**: 9-18 digit numbers
+- **Phone Numbers**: Indian/international formats
+- **URLs**: Including suspicious TLDs (.tk, .ml, .xyz)
+- **Emails**: All email addresses
+- **Keywords**: Urgency, verification, rewards
+
+All findings stored in "Internal Forensic Ledger" with timestamps.
+
+## 🧪 Testing
+
+### Run Unit Tests
+
 ```bash
-curl -X POST "http://localhost:8000/chat" \
-  -H "x-api-key: guvi2026" \
+pytest tests/ -v --cov=.
+```
+
+### Manual Testing with Mock Scammer
+
+```bash
+# Generate sample scam messages
+python tests/mock_scammer.py
+
+# Run interactive test
+curl -X POST http://localhost:8000/api/honeypot \
+  -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "sessionId": "TEST_001",
-    "message": {
-      "sender": "scammer",
-      "text": "Your KYC is expired. Send money to 9876543210 or account will be blocked.",
-      "timestamp": 1738776632
-    },
-    "conversationHistory": [],
-    "metadata": {
-      "channel": "SMS",
-      "language": "English",
-      "locale": "IN"
-    }
+    "session_id": "test-123",
+    "sender_id": "SCAM99",
+    "message": "URGENT! Account blocked. Verify: https://fake-bank.tk"
   }'
 ```
 
+## 📊 Demo Scenarios
+
+### Scenario 1: Bank Account Scam
+
+1. Scammer sends: *"Your HDFC account suspended. Verify: https://secure-verify.tk"*
+2. Profiler detects: High scam probability (domain age < 30 days, suspicious TLD)
+3. Actor responds: *"Arre ye kya ho gaya? Mera account suspended? Main kya karu?"*
+4. Auditor extracts: URL, domain age, keywords
+5. Continue for 15 turns or until high-value intel collected
+6. Callback sent to GUVI with full intelligence report
+
+### Scenario 2: Prize Winner Scam
+
+1. Scammer: *"Congratulations! Won ₹50,000. Pay ₹500 to winner@paytm"*
+2. Actor: *"Wow really?! Theek hai, but pehle aap apna phone number do?"*
+3. Auditor extracts: UPI ID `winner@paytm`
+4. Multi-turn engagement extracts scammer's contact info
+5. Final callback with extracted intelligence
+
+## 🔒 Security Features
+
+- **API Key Authentication**: All endpoints protected
+- **Redis TTL**: Sessions expire after 24 hours
+- **Rate Limiting**: (Recommended for production)
+- **CORS**: Configurable allowed origins
+- **Input Validation**: Pydantic schema validation
+
+## 🎯 Hackathon Metrics
+
+The system is optimized for:
+- ✅ **Engagement Duration**: Persona-driven conversations keep scammers engaged
+- ✅ **Number of Turns**: Emotional progression encourages multi-turn exchanges
+- ✅ **Intelligence Quality**: Comprehensive extraction with forensic ledger
+- ✅ **Time Wasted**: Each response generated delays scammer's operations
+
+## 🚢 Deployment
+
+### Production Checklist
+
+1. **Environment Variables**:
+   - Set `ENVIRONMENT=production`
+   - Set `DEBUG=false`
+   - Use strong `API_KEY`
+
+2. **Redis**:
+   - Use managed Redis (AWS ElastiCache, Redis Cloud)
+   - Enable password authentication
+   - Configure persistence
+
+3. **FastAPI**:
+   - Deploy with Gunicorn/Uvicorn workers
+   - Enable HTTPS
+   - Configure CORS for production domains
+
+4. **Monitoring**:
+   - Set `LOG_FORMAT=json` for structured logging
+   - Integrate with logging platform (Datadog, CloudWatch)
+   - Monitor callback success rates
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t honeypot-api .
+
+# Run container
+docker run -d \
+  -p 8000:8000 \
+  --env-file .env \
+  --name honeypot \
+  honeypot-api
+```
+
+## 📈 Monitoring
+
+Logs follow "National Security" formatting:
+
+```
+🛡️ [SYSTEM] === AGENTIC HONEY-POT API STARTING ===
+🔍 [PROFILER] (abc12345...) Starting zero-trust analysis
+🎯 [PROFILER] (abc12345...) Scam probability: 87.50% | flags=trai_violation, very_new_domain
+🎭 [ACTOR] (abc12345...) Generating response with confused_senior persona | turn=1
+💎 [AUDITOR] (abc12345...) Intelligence extracted: UPI=1, URLs=2, Phones=1
+📡 [CALLBACK] ✅ Callback successful: 200
+```
+
+## 🤝 Contributing
+
+This project is for the India AI Impact Buildathon. For questions or issues:
+1. Check logs for detailed error messages
+2. Verify Redis connectivity
+3. Ensure API keys are valid
+4. Test with mock scammer scenarios
+
+## 📝 License
+
+Built for India AI Impact Buildathon 2026
+
 ---
 
-## 📊 TECHNICAL SPECIFICATIONS
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Framework** | FastAPI 0.109.0 | High-performance async API |
-| **AI Engine** | Gemini 1.5 Flash | Scammer engagement responses |
-| **Validation** | Pydantic 2.5.3 | Judge-compatible schema validation |
-| **Tunneling** | Pyngrok 7.0.5 | Public URL generation |
-| **HTTP Client** | Requests 2.31.0 | Gemini API + GUVI callbacks |
-| **Server** | Uvicorn 0.27.0 | ASGI server with auto-reload |
-
----
-
-## 🔒 SECURITY
-
-- ✅ **API Key Authentication**: `x-api-key: guvi2026`
-- ✅ **Environment Variable Protection**: Gemini API key not hardcoded
-- ✅ **Input Validation**: Pydantic strict schema enforcement
-- ✅ **Rate Limiting**: Recommended for production (not implemented in MVP)
-
----
-
-## 📈 SCALABILITY ROADMAP
-
-### Current (MVP)
-- In-memory session store (single server)
-- Direct Gemini API calls (10 QPS limit)
-
-### Production Upgrade Path
-1. **Session Store**: Migrate to Redis/PostgreSQL
-2. **Load Balancing**: Nginx + multiple uvicorn workers
-3. **Caching**: Redis cache for AI responses
-4. **Monitoring**: Prometheus + Grafana metrics
-5. **Rate Limiting**: Token bucket algorithm (100 RPS)
-
----
-
-## 🏆 HACKATHON SUBMISSION CHECKLIST
-
-- ✅ Production-grade code with error handling
-- ✅ Judge-compatible camelCase → snake_case Pydantic aliases
-- ✅ GUVI callback integration with BackgroundTasks
-- ✅ 1.4 Billion scale resilience features
-- ✅ Ngrok auto-tunneling for public testing
-- ✅ Comprehensive documentation (this README)
-- ✅ Deployment-ready requirements.txt
-
----
-
-## 📞 SUPPORT
-
-For issues or questions during hackathon:
-- **Email**: [Your Email]
-- **GitHub**: [Your Repo]
-- **Demo Video**: [YouTube Link]
-
----
-
-**Built with 🇮🇳 for National Public Safety**  
-*Protecting 1.4 Billion Citizens from Digital Fraud*
+**🛡️ Built with National Security Grade Excellence** | Powered by LangGraph, Claude 3.5 Sonnet, and Gemini 2.0 Flash

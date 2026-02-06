@@ -1,32 +1,34 @@
-task.txt
-submission.txt
-*.log
-*.tmp
-.DS_Store
-__pycache__/
+# Add your .env file with actual secrets
 .env
-.vscode/
-node_modules/
-dist/
-build/
-coverage/
-*.bak
-*.swp
-.idea/
-*.iml
-*.class
-*.jar
-*.exe
-*.o
-*.out
-*.pdf
-*.docx
-*.xlsx
-*.pptx
-*.zip
-problem-statement.txt
-api end point tester.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 venv/
-.env.local
-.env.production
-.env.example
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Failed callbacks fallback
+failed_callbacks/
+
+# Redis
+dump.rdb
+
+# OS
+.DS_Store
+Thumbs.db
