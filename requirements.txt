@@ -19,10 +19,10 @@ langchain-community>=0.3.13
 # LLM Providers
 # ===================================
 google-generativeai==0.8.3
-anthropic==0.39.0
 groq==0.15.0
 openai==1.60.0
 langchain-google-genai==2.0.6
+anthropic>=0.41.0,<1
 langchain-anthropic==0.3.3
 
 # ===================================
