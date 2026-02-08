@@ -301,11 +301,25 @@ class HoneyPotGraph:
         Returns:
             Next node to execute
         """
-        if state.get("should_continue", False):
+        # ALWAYS engage for testing - we want to see the persona responses!
+        # In production, you can add back the threshold check
+        should_engage = state.get("should_continue", False)
+        scam_probability = state.get("scam_probability", 0.0)
+        
+        log_security_event(
+            logger,
+            "SYSTEM",
+            f"Scam probability: {scam_probability:.2f} | Threshold: {settings.scam_threshold} | Engaging: {should_engage or scam_probability >= 0.3}",
+            session_id=state.get("session_id"),
+        )
+        
+        # Lower threshold for testing (0.3 instead of 0.7)
+        # This ensures we engage with most messages to test the persona
+        if should_engage or scam_probability >= 0.3:
             return "engage"
         else:
-            # Below threshold, send generic response
-            state["actor_response"] = "Okay, thank you."
+            # Even for low-probability messages, give a curious response
+            state["actor_response"] = "I don't understand... What is this about?"
             return "end"
     
     def _should_callback(self, state: HoneyPotState) -> Literal["callback", "end"]:
