@@ -171,9 +171,11 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         """Construct Redis connection URL."""
-        if self.redis_url_env:
+        # Prefer REDIS_URL environment variable (used by Render)
+        if self.redis_url_env and self.redis_url_env.strip():
             return self.redis_url_env
             
+        # Fallback to constructed URL from host/port
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"

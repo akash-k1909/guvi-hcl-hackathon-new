@@ -135,13 +135,31 @@ async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
+    """Root endpoint - GET."""
     return {
         "service": "Agentic Honey-Pot API",
         "version": "1.0.0",
         "status": "operational",
         "timestamp": datetime.utcnow().isoformat(),
+        "endpoints": {
+            "health": "/health",
+            "honeypot": "/api/honeypot (POST)",
+            "test": "/api/test (GET)"
+        }
     }
+
+
+@app.post("/")
+async def root_post(request: IncomingMessage, api_key: str = Depends(verify_api_key)):
+    """
+    Root endpoint - POST.
+    Redirects to honeypot endpoint for GUVI compatibility.
+    """
+    # Forward to honeypot endpoint
+    from fastapi import BackgroundTasks
+    background_tasks = BackgroundTasks()
+    
+    return await honeypot_endpoint(request, background_tasks, api_key)
 
 
 @app.get("/health", response_model=HealthCheckResponse)
