@@ -1,0 +1,156 @@
+# ===================================
+# 🛡️ Render Blueprint Configuration
+# Agentic Honey-Pot API
+# ===================================
+
+services:
+  # FastAPI Web Service
+  - type: web
+    name: honeypot-api
+    runtime: docker
+    plan: starter  # Free tier available
+    region: oregon  # Choose closest to your users
+    branch: main
+    
+    # Docker configuration
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    # Auto-deploy on push
+    autoDeploy: true
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Environment variables (SET THESE IN RENDER DASHBOARD)
+    envVars:
+      # ===================================
+      # CRITICAL: Set these in Render Dashboard
+      # ===================================
+      
+      # API Security
+      - key: API_KEY
+        sync: false  # Set manually in dashboard
+      
+      # Redis Connection (External Service)
+      # Get this URL from Redis Cloud, Upstash, or Railway
+      - key: REDIS_URL
+        sync: false  # Example: redis://default:password@host:port
+      
+      # LLM API Keys
+      - key: GOOGLE_API_KEY
+        sync: false
+      
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      
+      - key: OPENAI_API_KEY
+        sync: false
+      
+      - key: GROQ_API_KEY
+        sync: false
+      
+      # GUVI Hackathon
+      - key: GUVI_CALLBACK_URL
+        sync: false
+      
+      - key: GUVI_API_KEY
+        sync: false
+      
+      # ===================================
+      # Production Configuration
+      # ===================================
+      
+      - key: ENVIRONMENT
+        value: production
+      
+      - key: DEBUG
+        value: false
+      
+      - key: LOG_LEVEL
+        value: INFO
+      
+      - key: LOG_FORMAT
+        value: json  # Structured logging for production
+      
+      # API Configuration
+      - key: API_HOST
+        value: 0.0.0.0
+      
+      # Render provides PORT automatically
+      # - key: PORT
+      #   value: 10000  # Render sets this automatically
+      
+      # Agent Configuration
+      - key: MAX_CONVERSATION_TURNS
+        value: 35
+      
+      - key: SCAM_THRESHOLD
+        value: 0.7
+      
+      - key: DEFAULT_PERSONA
+        value: confused_senior
+      
+      # LLM Models
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash-exp
+      
+      - key: CLAUDE_MODEL
+        value: claude-3-5-sonnet-20241022
+      
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      
+      # Forensics (Disabled for production stability)
+      - key: ENABLE_DOMAIN_AGE_CHECK
+        value: false
+      
+      - key: ENABLE_TRAI_VALIDATION
+        value: false
+      
+      - key: ENABLE_SAFE_BROWSING
+        value: false
+      
+      # Gunicorn Workers
+      - key: WORKERS
+        value: 2
+
+# ===================================
+# DEPLOYMENT INSTRUCTIONS
+# ===================================
+# 
+# 1. Set up External Redis:
+#    - Option A: Redis Cloud (https://redis.com/try-free/)
+#    - Option B: Upstash (https://upstash.com/)
+#    - Option C: Railway (https://railway.app/)
+#    
+#    Get your REDIS_URL in format:
+#    redis://default:password@host:port
+#
+# 2. Create New Web Service on Render:
+#    - Connect your GitHub repository
+#    - Render will auto-detect this render.yaml
+#    - Or manually select "Blueprint" deployment
+#
+# 3. Set Environment Variables in Render Dashboard:
+#    - API_KEY (generate a strong secret)
+#    - REDIS_URL (from your external Redis provider)
+#    - GOOGLE_API_KEY
+#    - ANTHROPIC_API_KEY
+#    - GUVI_CALLBACK_URL
+#    - GUVI_API_KEY
+#    - Other optional keys (OPENAI_API_KEY, GROQ_API_KEY)
+#
+# 4. Deploy:
+#    - Render will build the Docker image
+#    - Start the service
+#    - Run health checks
+#
+# 5. Verify:
+#    - Check https://your-app.onrender.com/health
+#    - Test API endpoint with your API key
+#
+# ===================================
